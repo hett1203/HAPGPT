@@ -1,0 +1,111 @@
+<!-- templates/chat.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAPGPT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        <header class="header">
+            <div class="brand-wrap">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="HAPGPT logo" class="logo">
+                <div class="brand-copy">
+                    <span class="brand-label">AI Assistant</span>
+                    <h1>HAPGPT</h1>
+                </div>
+            </div>
+            <div class="status-pill">
+                <span class="status-dot"></span>
+                Online
+            </div>
+        </header>
+
+        <main class="chat-area">
+            <div class="chat-box" id="chat-box" aria-live="polite">
+                <div class="message-row ai-message">
+                    <div class="message-bubble">
+                        <p>Welcome! How can I assist you today?</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <textarea id="user-input" placeholder="Message HAPGPT..." rows="1"></textarea>
+                <button id="send-button" type="button">Send</button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+
+        function escapeHtml(value) {
+            return value
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function appendMessage(role, text) {
+            const row = document.createElement('div');
+            row.className = `message-row ${role}-message`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.innerHTML = `<p>${escapeHtml(text)}</p>`;
+
+            row.appendChild(bubble);
+            chatBox.appendChild(row);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            appendMessage('user', message);
+            userInput.value = '';
+            userInput.style.height = 'auto';
+
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.response) {
+                    appendMessage('ai', data.response);
+                } else {
+                    appendMessage('error', data.error || 'Something went wrong.');
+                }
+            })
+            .catch(() => {
+                appendMessage('error', 'Error communicating with the server.');
+            });
+        }
+
+        document.getElementById('send-button').addEventListener('click', sendMessage);
+
+        userInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+        });
+    </script>
+</body>
+</html>
